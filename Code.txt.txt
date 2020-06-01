@@ -1,0 +1,117 @@
+Option Explicit
+
+Sub Execute()
+
+
+Dim strPPT_TemplatePath As String
+Dim strPDFOutputFolderPath As String
+Dim lngLastRow As Long
+Dim wsData As Worksheet
+Dim lngCounter As Long
+Dim strPDF_FIleName, strResult As String
+Dim objPPT As Object
+Const ppSaveAsPDF As Long = 32
+
+strPPT_TemplatePath = ThisWorkbook.Sheets("Home").Range("G3")
+strPDFOutputFolderPath = ThisWorkbook.Sheets("Home").Range("G5")
+
+Set wsData = ThisWorkbook.Sheets("Data")
+lngLastRow = wsData.UsedRange.Rows.Count
+
+For lngCounter = 2 To lngLastRow
+
+    Set objPPT = OpenPowerPointPresentation(strPPT_TemplatePath)
+
+    strResult = UpdateShapeText(objPPT, 1, "TextBox 3", wsData, "A" & lngCounter)
+    
+    strResult = UpdateShapeText(objPPT, 1, "TextBox 4", wsData, "B" & lngCounter)
+    
+    strPDF_FIleName = strPDFOutputFolderPath & "\" & wsData.Range("A" & lngCounter).Text & ".pdf"
+    
+    objPPT.SaveAs strPDF_FIleName, ppSaveAsPDF
+    
+    objPPT.Close
+    
+    Set objPPT = Nothing
+    
+Next lngCounter
+
+MsgBox "Task Completed!"
+
+End Sub
+
+Function OpenPowerPointPresentation(ByVal strPPT_Template_Path As String) As Variant
+
+On Error GoTo ErrorValidation
+
+If Dir(strPPT_Template_Path) = "" Then
+    OpenPowerPointPresentation = "File does not exist"
+    Exit Function
+End If
+
+Dim PowerPointApp As Object
+Dim PPT As Object
+
+Set PowerPointApp = CreateObject("Powerpoint.Application")
+
+PowerPointApp.Visible = True
+
+Set PPT = PowerPointApp.Presentations.Open(strPPT_Template_Path)
+
+ErrorValidation:
+
+If Err.Number > 0 Then
+    OpenPowerPointPresentation = "Error Number : " & Err.Number
+Else
+    Set OpenPowerPointPresentation = PPT
+End If
+
+
+End Function
+
+Function UpdateShapeText(ByVal pptObject As Object, ByVal intSlideNumber As Integer, ByVal strShapeName As String, ByVal objWorkSheet As Worksheet, ByVal strRangeOfText As String) As String
+
+
+On Error GoTo ErrorValidation
+
+Dim strtext As String
+Dim objCell As Object
+
+strtext = ""
+For Each objCell In objWorkSheet.Range(strRangeOfText)
+    If strtext = "" Then
+        strtext = objCell.Value
+    Else
+        strtext = strtext & Chr(10) & objCell.Value
+    End If
+Next
+
+pptObject.Slides(intSlideNumber).Select
+pptObject.Slides(intSlideNumber).Shapes(strShapeName).TextFrame.TextRange.Text = strtext
+
+ErrorValidation:
+
+If Err.Number > 0 Then
+    UpdateShapeText = "Error Number : " & Err.Number
+Else
+    UpdateShapeText = "True"
+End If
+
+End Function
+
+Sub DetermintActiveShape()
+
+Dim Shp As Shape
+Dim strShareName As String
+
+If ActiveWindow.Selection.Type = ppSelectionshapes Then
+    For Each Shp In ActiveWindow.Selection.ShapeRange
+        Set ActiveShape = Shp
+        strShareName = InputBox("Object name : ", "PowerPoint", ActiveShape.Name)
+        Exit For
+    Next Shp
+Else
+    MsgBox "There is no shape currently selected!", vbInformation, "No Shape Found"
+End If
+
+End Sub
